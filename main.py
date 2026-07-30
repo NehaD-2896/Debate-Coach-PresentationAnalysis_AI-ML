@@ -6,6 +6,7 @@ from counterargument_generation.generator import CounterArgumentGenerator
 from debate_simulation.simulator import DebateSimulator
 from logical_fallacy_detection.detector import LogicalFallacyDetector
 from performance_scoring.scorer import PerformanceScorer
+from presentation_analysis.analyzer import PresentationAnalyzer
 
 
 # ======================================
@@ -20,6 +21,9 @@ fallacy_detector = LogicalFallacyDetector()
 
 performance_scorer = PerformanceScorer()
 
+presentation_analyzer = PresentationAnalyzer()
+
+
 
 # ======================================
 # FastAPI Application
@@ -31,12 +35,19 @@ app = FastAPI(
 )
 
 
+
 # ======================================
-# Request Model
+# Request Models
 # ======================================
 
 class ArgumentRequest(BaseModel):
     argument: str
+
+
+
+class PresentationRequest(BaseModel):
+    presentation_text: str
+
 
 
 
@@ -49,14 +60,17 @@ def home():
 
     return {
         "message": "AI Debate Coach API Running",
+
         "modules": [
             "Argument Analysis Engine",
             "Counterargument Generation Engine",
             "Debate Simulation Engine",
             "Logical Fallacy Detection Engine",
-            "Performance Scoring Engine"
+            "Performance Scoring Engine",
+            "Presentation Analysis Engine"
         ]
     }
+
 
 
 
@@ -72,10 +86,15 @@ def argument_analysis(request: ArgumentRequest):
     )
 
     return {
+
         "module": "Argument Analysis Engine",
+
         "input_argument": request.argument,
+
         "result": result
     }
+
+
 
 
 
@@ -91,10 +110,15 @@ def counterargument(request: ArgumentRequest):
     )
 
     return {
+
         "module": "Counterargument Generation Engine",
+
         "input_argument": request.argument,
+
         "counterargument": result
     }
+
+
 
 
 
@@ -110,10 +134,15 @@ def debate_simulation(request: ArgumentRequest):
     )
 
     return {
+
         "module": "Debate Simulation Engine",
+
         "input_argument": request.argument,
+
         "result": result
     }
+
+
 
 
 
@@ -129,10 +158,15 @@ def logical_fallacy(request: ArgumentRequest):
     )
 
     return {
+
         "module": "Logical Fallacy Detection Engine",
+
         "input_argument": request.argument,
+
         "result": result
     }
+
+
 
 
 
@@ -148,7 +182,34 @@ def performance_score(request: ArgumentRequest):
     )
 
     return {
+
         "module": "Performance Scoring Engine",
+
         "input_argument": request.argument,
+
+        "result": result
+    }
+
+
+
+
+
+# ======================================
+# Module 6: Presentation Analysis Engine
+# ======================================
+
+@app.post("/presentation-analysis")
+def presentation_analysis(request: PresentationRequest):
+
+    result = presentation_analyzer.analyze(
+        request.presentation_text
+    )
+
+    return {
+
+        "module": "Presentation Analysis Engine",
+
+        "input_presentation": request.presentation_text,
+
         "result": result
     }
