@@ -141,59 +141,7 @@ http://127.0.0.1:8000/docs
 
 ---
 
-## 🔄 Workflow
 
-```
-User Input
-      │
-      ▼
-FastAPI Endpoint
-      │
-      ▼
-Argument Analysis Engine
-      │
-      ▼
-Google Gemini API
-      │
-      ▼
-JSON Response
-      │
-      ▼
-Frontend / Backend
-```
 
 ---
 
-## 🔗 Integration
-
-This module will provide its output to:
-
-- Recommendation & Coaching Engine
-- AI Debate Simulation Engine
-- Performance Scoring Engine
-- Backend API
-- Frontend Dashboard
-
----
-
-## 📌 Current Status
-
-| Feature | Status |
-|----------|--------|
-| Gemini Integration | ✅ Completed |
-| FastAPI Integration | ✅ Completed |
-| Argument Analysis | ✅ Completed |
-| Swagger Testing | ✅ Completed |
-| JSON Response | ✅ Completed |
-| Backend Integration | ⏳ Pending |
-| Frontend Integration | ⏳ Pending |
-
----
-
-## 👩‍💻 Developed By
-
-**Subhalaxmi Jena**
-
-Infosys Springboard Virtual Internship
-
-AI Debate Coach & Presentation Analysis Platform
