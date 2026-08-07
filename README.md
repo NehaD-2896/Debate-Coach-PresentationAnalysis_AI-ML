@@ -1,147 +1,206 @@
-# Debate-Coach-PresentationAnalysis_AI-ML
+# Argument Analysis & Fallacy Detection Modules
 
-=======================================================
-# 🧠 AI Debate Coach – Argument Analysis Engine
+This folder implements **two modules** from the AI Debate Coach & Presentation
+Analysis Platform spec:
 
-## 📌 Overview
+- **Module 4 — Argument Analysis Engine**: scores an argument's claim,
+  evidence, clarity, relevance, and logical consistency.
+- **Module 5 — Logical Fallacy Detection Engine**: scans an argument for 8
+  known logical fallacies and suggests corrections.
 
-This module is part of the **AI Debate Coach & Presentation Analysis Platform**.
-
-The Argument Analysis Engine uses **Google Gemini AI** to analyze a user's debate argument and returns structured insights that can be used by other AI modules and the backend.
-
----
-
-## 🚀 Features
-
-- Analyze a user's argument
-- Extract the main claim
-- Identify supporting evidence
-- Identify reasoning
-- Detect argument type
-- Calculate:
-  - Strength Score
-  - Clarity Score
-  - Relevance Score
-  - Persuasiveness Score
-- Identify missing points
-- Generate AI feedback
-- Return structured JSON response
+Both modules are implemented as independent **agents** that follow the same
+shared pattern (`BaseAgent`), so other teammates building the remaining
+modules (AI opponent, coaching engine, scoring engine, etc.) can copy this
+same shape.
 
 ---
 
-## 🛠️ Tech Stack
-
-- Python 3.10+
-- FastAPI
-- Google Gemini API
-- Python Dotenv
-
----
-
-## 📁 Project Structure
+## 1. How it works
 
 ```
-Debate-Coach-PresentationAnalysis_AI-ML/
-│
-├── argument_analysis/
-│   ├── __init__.py
-│   └── analyzer.py
-│
-├── debate_simulation/
-│   └── __init__.py
-│
-├── recommendation_engine/
-│   └── __init__.py
-│
-├── main.py
-├── requirements.txt
-├── .gitignore
-└── test_gemini.py
+Your text  ─────►  ArgumentAnalysisAgent  ─────►  JSON: scores + claim + evidence
+           └────►  FallacyDetectionAgent  ─────►  JSON: fallacies found + fixes
 ```
+
+Each agent sends your text to an LLM (a large language model) along with a
+fixed instruction prompt telling it exactly what to look for and what JSON
+shape to reply in. The LLM does the actual reasoning; the agent code just
+packages the request and parses the response.
+
+### LLM providers — Groq primary, Gemini fallback
+
+`app/llm_client.py` is the single shared function both agents call to reach
+an LLM. It is provider-aware:
+
+1. It tries **Groq** first (fast, generous free tier).
+2. If Groq fails after its own retries (quota exhausted, rate-limited, no
+   key set, model unavailable) it **automatically falls back to Gemini**
+   using the exact same prompt — no code changes needed anywhere else.
+3. If both fail, it raises the original Groq error so you can see what
+   actually went wrong.
+
+This means the app keeps working even if one provider's free tier runs out
+mid-session.
 
 ---
 
-## ⚙️ Setup
+## 2. What you need
 
-### 1. Clone Repository
+- **Python 3.11 or 3.12** (avoid 3.14 for now — some dependency wheels lag
+  behind the newest Python releases)
+- A **Groq API key** (free) — https://console.groq.com/keys
+- A **Gemini API key** (free) — https://aistudio.google.com/apikey
+  (used only as backup, but the app will warn you if it's missing)
+
+---
+
+## 3. Setup
 
 ```bash
-git clone <repository-url>
-```
+cd agents-restructured
 
-### 2. Install Dependencies
+# Create and activate a virtual environment
+python -m venv venv
+venv\Scripts\activate        # Windows
+source venv/bin/activate     # macOS/Linux
 
-```bash
+# Install dependencies
 pip install -r requirements.txt
 ```
 
-### 3. Create a `.env` file
+Create a `.env` file in this folder (same level as `requirements.txt`):
 
-```
-GEMINI_API_KEY=YOUR_API_KEY
+```env
+GROQ_API_KEY=your_groq_key_here
+GROQ_MODEL=openai/gpt-oss-120b
+
+GEMINI_API_KEY=your_gemini_key_here
+LLM_MODEL=gemini-3.5-flash-lite
 ```
 
-> **Do NOT commit the `.env` file to GitHub.**
+> Model names change as providers deprecate old ones. If you get a `404` or
+> "model not found" error, check the provider's current model list and
+> update `GROQ_MODEL` / `LLM_MODEL` accordingly.
 
 ---
 
-## ▶️ Run the API
+## 4. Running it
+
+### Analyze a single argument from the command line
 
 ```bash
-uvicorn main:app --reload
+python -m app.run_flow "Your argument goes here as one string."
 ```
 
-Server starts at
+or run it interactively (it will prompt you to type one):
 
-```
-http://127.0.0.1:8000
+```bash
+python -m app.run_flow
 ```
 
-Swagger UI
+**Example:**
 
+```bash
+python -m app.run_flow "Either we ban cars completely or the planet is doomed."
 ```
-http://127.0.0.1:8000/docs
+
+Output is formatted with section headers, aligned scores, and color-coded
+strength — plus the raw JSON at the bottom for debugging or copy-pasting
+into other tools.
+
+### Run the test suites
+
+```bash
+python tests/test_agents_demo.py   # quick 2-call sanity check
+python tests/test_fallacies.py     # full 12-case accuracy test (~3 min, paced to avoid rate limits)
 ```
+
+`test_fallacies.py` runs one example per fallacy type, a clean (no-fallacy)
+example, and edge cases (empty/too-short/whitespace input) to confirm both
+agents behave correctly across the full range of expected inputs.
 
 ---
 
-## 📮 API Endpoint
+## 5. Input & output
 
-### POST `/argument-analysis`
+**Input:** any argument as plain text (a sentence or a few sentences).
 
-### Request
+**Output — Argument Analysis:**
 
 ```json
 {
-  "argument": "Artificial Intelligence should replace teachers because it is available 24/7 and provides personalized learning."
+  "claim": "the main point being argued",
+  "evidence": ["reasons or facts the speaker gave"],
+  "strength_label": "weak | moderate | strong",
+  "strength_score": 0,
+  "clarity_score": 0,
+  "relevance_score": 0,
+  "logical_consistency_score": 0,
+  "notes": "1-2 sentence explanation of the scoring"
 }
 ```
 
----
+| Field | Meaning |
+|---|---|
+| `claim` | The argument's main point, extracted and restated clearly |
+| `evidence` | The reasons/facts the speaker actually offered (not judged yet, just listed) |
+| `strength_score` | Overall verdict: how convincing the argument is as a whole |
+| `clarity_score` | How understandable the sentence is, independent of whether it's logically sound |
+| `relevance_score` | Whether the evidence actually relates to the claim, vs. being a tangent |
+| `logical_consistency_score` | Whether the internal logic holds together — no contradictions or unjustified leaps |
+| `notes` | The LLM's short justification for the scores above |
 
-## Example Response
+**Output — Fallacy Detection:**
 
 ```json
 {
-  "claim": "Artificial Intelligence should replace teachers.",
-  "evidence": "AI is available 24/7 and provides personalized learning.",
-  "reasoning": "Continuous availability and tailored instruction make AI superior or sufficient to fully take over the responsibilities of human educators.",
-  "argument_type": "Policy Argument",
-  "persuasiveness": 4,
-  "strength_score": 4,
-  "clarity_score": 9,
-  "relevance_score": 8,
-  "missing_points": [
-    "Need supporting evidence",
-    "Need counterarguments"
+  "fallacies_found": [
+    {
+      "type": "Ad Hominem",
+      "excerpt": "the exact phrase that triggered the flag",
+      "explanation": "why this counts as that fallacy",
+      "correction_suggestion": "how to fix the argument",
+      "confidence": 0
+    }
   ],
-  "feedback": "The argument is clear but lacks supporting evidence and ignores counterarguments."
+  "status": "fallacies_detected | none_found",
+  "message": "human-readable summary"
 }
+```
+
+Supported fallacy types: **Ad Hominem, Straw Man, False Dilemma, Slippery
+Slope, Appeal to Authority, Circular Reasoning, Hasty Generalization, Red
+Herring.**
+
+---
+
+## 6. Project structure
+
+```
+agents-restructured/
+├── app/
+│   ├── config.py                    # loads API keys/model names from .env
+│   ├── llm_client.py                # Groq-primary/Gemini-fallback LLM caller
+│   ├── run_flow.py                  # CLI entry point — run this to analyze text
+│   └── agents/
+│       ├── base_agent.py            # shared template every agent follows
+│       ├── argument_analysis_agent.py
+│       └── fallacy_detection_agent.py
+├── tests/
+│   ├── test_agents_demo.py          # quick demo of both agents
+│   └── test_fallacies.py            # 12-case accuracy test
+├── requirements.txt
+└── .env                              # you create this — never commit it
 ```
 
 ---
 
+## 7. Troubleshooting
 
-
----
-
+| Problem | Cause | Fix |
+|---|---|---|
+| `ModuleNotFoundError: No module named 'app'` | Ran the file directly instead of as a module | Use `python -m app.run_flow ...`, not `python app/run_flow.py` |
+| `429` rate limit | Free-tier quota hit on the current provider | The app retries automatically, then falls back to the other provider |
+| `404 NOT_FOUND` on a model name | Provider deprecated that model | Update `GROQ_MODEL` / `LLM_MODEL` in `.env` to a current model name |
+| Failed building wheel for `pydantic-core` | pip tried to compile from source (no Rust/MSVC linker) | `pip install --only-binary=:all: pydantic pydantic-core`, or use Python 3.11/3.12 |
+| Both providers fail | Both API keys invalid, unset, or genuinely both out of quota | Check `.env`, verify keys work with a minimal test script for each provider |
