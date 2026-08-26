@@ -1,4 +1,4 @@
-# Milestone 5 — Performance Scoring Engine
+ Performance Scoring Engine
 
 A production-oriented, integration-ready performance scoring service for the Debate Coach platform.
 
