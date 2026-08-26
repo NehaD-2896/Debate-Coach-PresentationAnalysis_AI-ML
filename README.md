@@ -1,147 +1,66 @@
-# Debate-Coach-PresentationAnalysis_AI-ML
+# Presentation Analysis Engine — Advanced Reference-Style Module
 
-=======================================================
-# 🧠 AI Debate Coach – Argument Analysis Engine
+An advanced, independently integrable Presentation Analysis Engine modeled on the supplied Reference ZIP workflow.
 
-## 📌 Overview
+## Core workflow
+1. Upload the real PPTX/PDF you will present.
+2. Click **Start presenting**.
+3. The browser records microphone audio directly with `MediaRecorder`.
+4. Click **Stop & Analyze**; duration is calculated automatically.
+5. Fast/Whisper transcribes the real recording locally.
+6. The backend extracts the real slide text with `python-pptx` / `pdfplumber`.
+7. **Groq is the primary LLM** for evidence-grounded delivery + content analysis.
+8. The UI displays the combined report and slide-specific feedback.
 
-This module is part of the **AI Debate Coach & Presentation Analysis Platform**.
+## Advanced AI behavior
+The Groq prompt is explicitly grounded in the extracted slides and transcript. It produces:
+- confidence, clarity and engagement scores
+- grammar issues based on the transcript
+- delivery strengths and improvement actions
+- structure, content clarity, claim-support and flow scores
+- slide-by-slide takeaway
+- explicit supporting detail actually present in the slide
+- slide-specific improvement feedback
+- transcript-to-slide alignment when evidence permits
 
-The Argument Analysis Engine uses **Google Gemini AI** to analyze a user's debate argument and returns structured insights that can be used by other AI modules and the backend.
+The model is instructed not to invent facts, visuals, audience reactions or evidence that are absent from the supplied inputs.
 
----
+## Configure Groq
+Copy `.env.example` to `.env` and set:
 
-## 🚀 Features
-
-- Analyze a user's argument
-- Extract the main claim
-- Identify supporting evidence
-- Identify reasoning
-- Detect argument type
-- Calculate:
-  - Strength Score
-  - Clarity Score
-  - Relevance Score
-  - Persuasiveness Score
-- Identify missing points
-- Generate AI feedback
-- Return structured JSON response
-
----
-
-## 🛠️ Tech Stack
-
-- Python 3.10+
-- FastAPI
-- Google Gemini API
-- Python Dotenv
-
----
-
-## 📁 Project Structure
-
-```
-Debate-Coach-PresentationAnalysis_AI-ML/
-│
-├── argument_analysis/
-│   ├── __init__.py
-│   └── analyzer.py
-│
-├── debate_simulation/
-│   └── __init__.py
-│
-├── recommendation_engine/
-│   └── __init__.py
-│
-├── main.py
-├── requirements.txt
-├── .gitignore
-└── test_gemini.py
+```env
+GROQ_API_KEY=your_real_key
+GROQ_MODEL=llama-3.3-70b-versatile
 ```
 
----
+Groq is used first. Gemini is optional fallback if configured.
 
-## ⚙️ Setup
-
-### 1. Clone Repository
-
-```bash
-git clone <repository-url>
-```
-
-### 2. Install Dependencies
-
-```bash
+## Run backend
+```powershell
+python -m venv venv
+venv\\Scripts\\activate
 pip install -r requirements.txt
+uvicorn app.main:app --reload --port 8010
 ```
 
-### 3. Create a `.env` file
+Health: http://127.0.0.1:8010/health
+Swagger: http://127.0.0.1:8010/docs
 
-```
-GEMINI_API_KEY=YOUR_API_KEY
-```
-
-> **Do NOT commit the `.env` file to GitHub.**
-
----
-
-## ▶️ Run the API
-
-```bash
-uvicorn main:app --reload
+## Run frontend
+```powershell
+cd frontend
+npm install
+npm run dev
 ```
 
-Server starts at
+Open http://localhost:5173
 
-```
-http://127.0.0.1:8000
-```
+## Integration contract
+`POST /api/v1/presentation/analyze-full` accepts:
+- `document`: PPTX/PDF
+- `audio`: recorded WebM/audio
+- `duration_seconds`: actual recording duration
 
-Swagger UI
+The normal browser UI supplies all three automatically. The API remains directly usable by your teammate's integration.
 
-```
-http://127.0.0.1:8000/docs
-```
-
----
-
-## 📮 API Endpoint
-
-### POST `/argument-analysis`
-
-### Request
-
-```json
-{
-  "argument": "Artificial Intelligence should replace teachers because it is available 24/7 and provides personalized learning."
-}
-```
-
----
-
-## Example Response
-
-```json
-{
-  "claim": "Artificial Intelligence should replace teachers.",
-  "evidence": "AI is available 24/7 and provides personalized learning.",
-  "reasoning": "Continuous availability and tailored instruction make AI superior or sufficient to fully take over the responsibilities of human educators.",
-  "argument_type": "Policy Argument",
-  "persuasiveness": 4,
-  "strength_score": 4,
-  "clarity_score": 9,
-  "relevance_score": 8,
-  "missing_points": [
-    "Need supporting evidence",
-    "Need counterarguments"
-  ],
-  "feedback": "The argument is clear but lacks supporting evidence and ignores counterarguments."
-}
-```
-
----
-
-
-
----
-
+The response is designed for the Performance Scoring Engine and contains delivery metrics, content metrics, transcript, slide feedback and AI-provider metadata. The final cross-module performance score remains the responsibility of the Performance Scoring Engine.
