@@ -1,0 +1,39 @@
+{
+  "session_id": "demo-session-001",
+  "topic": "Should AI be used in education?",
+  "stance": "For",
+  "transcript": "AI can personalize learning and help teachers identify gaps. Schools should adopt it with clear privacy safeguards and human oversight.",
+  "argument_analysis": {
+    "clarity_score": 84,
+    "relevance_score": 88,
+    "evidence_strength_score": 76,
+    "logical_consistency_score": 82,
+    "persuasiveness_score": 79
+  },
+  "fallacy_analysis": {
+    "fallacies_found": []
+  },
+  "debate_evaluation": {
+    "logic": 8.2,
+    "evidence": 7.6,
+    "rebuttal_quality": 7.9
+  },
+  "presentation_analysis": {
+    "presentation_metrics": {
+      "words_per_minute": 133,
+      "pace_status": "Optimal",
+      "filler_word_count": 0
+    },
+    "delivery_metrics": {
+      "confidence_score": 82,
+      "clarity_score": 84,
+      "engagement_score": 78
+    },
+    "content_review": {
+      "structure_score": 72,
+      "clarity_score": 85,
+      "claim_support_score": 66,
+      "flow_score": 68
+    }
+  }
+}
