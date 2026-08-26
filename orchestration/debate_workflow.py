@@ -1,75 +1,43 @@
-from typing import Any, Dict
-
-from .state import DebateState
-from fallacy_detection.detector import FallacyDetector
-from debate_simulation.simulator import DebateSimulator
-from recommendation_engine.coach import DebateCoach
+from typing import Any, Dict, Sequence
 
 class DebateWorkflow:
-    """Four-module AI/ML integration pipeline.
+    """Pure integration/orchestration layer.
 
-    The existing argument_analysis/analyzer.py is injected by the caller so
-    this integration does not overwrite the team's existing Module 1.
+    No agent/module is imported here. The team's existing four modules are
+    injected into the workflow, so this file can live independently of
+    their package names and locations.
     """
 
-    def __init__(
-        self,
-        argument_analyzer: Any,
-        fallacy_detector: Any | None = None,
-        simulator: Any | None = None,
-        coach: Any | None = None,
-    ):
-        self.argument_analyzer = argument_analyzer
-        self.fallacy_detector = fallacy_detector or FallacyDetector()
-        self.simulator = simulator or DebateSimulator()
-        self.coach = coach or DebateCoach()
+    def __init__(self, modules: Sequence[Any]):
+        if len(modules) != 4:
+            raise ValueError("DebateWorkflow requires exactly 4 modules.")
+        self.modules = list(modules)
 
     @staticmethod
-    def _run_argument_analyzer(analyzer: Any, argument: str) -> Dict[str, Any]:
-        if hasattr(analyzer, "analyze"):
-            result = analyzer.analyze(argument)
-        elif callable(analyzer):
-            result = analyzer(argument)
-        else:
-            raise TypeError("argument_analyzer must expose analyze() or be callable")
+    def _call(module: Any, argument: str, context: Dict[str, Any]) -> Any:
+        for method_name in ("run", "analyze", "generate", "coach"):
+            method = getattr(module, method_name, None)
+            if callable(method):
+                return method(argument, **context)
 
-        return result if isinstance(result, dict) else {"result": result}
+        if callable(module):
+            return module(argument, **context)
+
+        raise TypeError(
+            f"Module {module!r} must expose run/analyze/generate/coach or be callable."
+        )
 
     def run(self, argument: str) -> Dict[str, Any]:
         if not argument or not argument.strip():
             raise ValueError("argument must not be empty")
 
-        state = DebateState(argument=argument)
+        context: Dict[str, Any] = {}
+        results: Dict[str, Any] = {}
 
-        # Module 1: existing repository argument_analysis module.
-        state.argument_analysis = self._run_argument_analyzer(
-            self.argument_analyzer, argument
-        )
+        for index, module in enumerate(self.modules, start=1):
+            output = self._call(module, argument, context)
+            key = getattr(module, "output_key", f"module_{index}")
+            results[key] = output
+            context[key] = output
 
-        # Module 2: fallacy detection.
-        state.fallacy_audit = self.fallacy_detector.analyze(
-            argument,
-            argument_analysis=state.argument_analysis,
-        )
-
-        # Module 3: debate simulation / rebuttal.
-        state.simulation = self.simulator.generate(
-            argument,
-            argument_analysis=state.argument_analysis,
-            fallacy_audit=state.fallacy_audit,
-        )
-
-        # Module 4: recommendation / debate coaching.
-        state.coaching = self.coach.coach(
-            argument,
-            argument_analysis=state.argument_analysis,
-            fallacy_audit=state.fallacy_audit,
-            simulation=state.simulation,
-        )
-
-        return {
-            "argument_analysis": state.argument_analysis,
-            "fallacy_audit": state.fallacy_audit,
-            "simulation": state.simulation,
-            "coaching": state.coaching,
-        }
+        return {"input": argument, "modules": results}

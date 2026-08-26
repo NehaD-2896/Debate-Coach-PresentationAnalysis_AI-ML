@@ -1,27 +1,47 @@
 from orchestration.debate_workflow import DebateWorkflow
 
-class FakeArgumentAnalyzer:
-    def analyze(self, argument):
-        return {
-            "claim": argument,
-            "strength_score": 80,
-            "clarity_score": 90,
-            "relevance_score": 85,
-            "persuasiveness_score": 82,
-        }
+class ArgumentAnalysisAgent:
+    output_key = "argument_analysis"
+    def run(self, argument, **context):
+        return {"claim": argument, "strength_score": 82}
 
-def test_four_module_integration():
-    result = DebateWorkflow(FakeArgumentAnalyzer()).run(
+class FallacyDetectionAgent:
+    output_key = "fallacy_detection"
+    def run(self, argument, **context):
+        assert "argument_analysis" in context
+        return {"fallacies_found": []}
+
+class RebuttalAgent:
+    output_key = "rebuttal"
+    def run(self, argument, **context):
+        assert "fallacy_detection" in context
+        return {"counterargument": "Provide evidence for the claim."}
+
+class CoachAgent:
+    output_key = "coaching"
+    def run(self, argument, **context):
+        assert "rebuttal" in context
+        return {"score": 82, "feedback": "Address the strongest counterargument."}
+
+def test_four_module_chain():
+    workflow = DebateWorkflow([
+        ArgumentAnalysisAgent(),
+        FallacyDetectionAgent(),
+        RebuttalAgent(),
+        CoachAgent(),
+    ])
+
+    result = workflow.run(
         "AI should support teachers rather than replace them."
     )
 
-    assert set(result) == {
+    assert list(result["modules"]) == [
         "argument_analysis",
-        "fallacy_audit",
-        "simulation",
+        "fallacy_detection",
+        "rebuttal",
         "coaching",
-    }
-    assert result["argument_analysis"]["strength_score"] == 80
-    assert "fallacies" in result["fallacy_audit"]
-    assert "counterarguments" in result["simulation"]
-    assert "overall_score" in result["coaching"]
+    ]
+    assert result["modules"]["argument_analysis"]["strength_score"] == 82
+    assert result["modules"]["fallacy_detection"]["fallacies_found"] == []
+    assert "counterargument" in result["modules"]["rebuttal"]
+    assert result["modules"]["coaching"]["score"] == 82
