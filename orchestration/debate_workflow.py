@@ -1,12 +1,8 @@
 from typing import Any, Dict, Sequence
 
-class DebateWorkflow:
-    """Pure integration/orchestration layer.
 
-    No agent/module is imported here. The team's existing four modules are
-    injected into the workflow, so this file can live independently of
-    their package names and locations.
-    """
+class DebateWorkflow:
+    """Sequential integration of the project's existing AI components."""
 
     def __init__(self, modules: Sequence[Any]):
         if len(modules) != 4:
@@ -24,7 +20,8 @@ class DebateWorkflow:
             return module(argument, **context)
 
         raise TypeError(
-            f"Module {module!r} must expose run/analyze/generate/coach or be callable."
+            f"Module {module!r} must expose run/analyze/generate/coach "
+            "or be callable."
         )
 
     def run(self, argument: str) -> Dict[str, Any]:
@@ -40,4 +37,29 @@ class DebateWorkflow:
             results[key] = output
             context[key] = output
 
-        return {"input": argument, "modules": results}
+        return {
+            "input": argument,
+            "modules": results,
+        }
+
+
+def build_real_workflow(
+    argument_agent,
+    fallacy_agent,
+    ai_engine,
+    persona="The Contrarian",
+):
+    """Build a workflow from the project's real components."""
+    from .adapters import (
+        ArgumentAnalysisAdapter,
+        FallacyDetectionAdapter,
+        RebuttalAdapter,
+        CoachingScoringAdapter,
+    )
+
+    return DebateWorkflow([
+        ArgumentAnalysisAdapter(argument_agent),
+        FallacyDetectionAdapter(fallacy_agent),
+        RebuttalAdapter(ai_engine, persona),
+        CoachingScoringAdapter(ai_engine),
+    ])
