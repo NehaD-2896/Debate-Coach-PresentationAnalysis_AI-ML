@@ -4,10 +4,11 @@ from typing import Any, Dict, Sequence
 class DebateWorkflow:
     """Sequential integration of the project's existing AI components."""
 
-    def __init__(self, modules: Sequence[Any]):
+    def __init__(self, modules: Sequence[Any], speech_to_text=None):
         if len(modules) != 4:
             raise ValueError("DebateWorkflow requires exactly 4 modules.")
         self.modules = list(modules)
+        self.speech_to_text = speech_to_text
 
     @staticmethod
     def _call(module: Any, argument: str, context: Dict[str, Any]) -> Any:
@@ -42,6 +43,24 @@ class DebateWorkflow:
             "modules": results,
         }
 
+    def run_audio(self, audio_source, language=None) -> Dict[str, Any]:
+        """Transcribe audio, then run the existing four-module workflow."""
+        if self.speech_to_text is None:
+            raise RuntimeError("Speech-to-text module is not configured.")
+
+        transcription = self.speech_to_text.run(
+            audio_source,
+            language=language,
+        )
+        transcript = transcription.get("transcript", "").strip()
+
+        if not transcript:
+            raise ValueError("Speech-to-text returned an empty transcript.")
+
+        result = self.run(transcript)
+        result["transcription"] = transcription
+        return result
+
 
 def build_real_workflow(
     argument_agent,
@@ -50,16 +69,21 @@ def build_real_workflow(
     persona="The Contrarian",
 ):
     """Build a workflow from the project's real components."""
+    from app.agents.speech_to_text_agent import speech_to_text_agent
     from .adapters import (
         ArgumentAnalysisAdapter,
         FallacyDetectionAdapter,
         RebuttalAdapter,
         CoachingScoringAdapter,
     )
+    from .speech_to_text_adapter import SpeechToTextAdapter
 
-    return DebateWorkflow([
-        ArgumentAnalysisAdapter(argument_agent),
-        FallacyDetectionAdapter(fallacy_agent),
-        RebuttalAdapter(ai_engine, persona),
-        CoachingScoringAdapter(ai_engine),
-    ])
+    return DebateWorkflow(
+        [
+            ArgumentAnalysisAdapter(argument_agent),
+            FallacyDetectionAdapter(fallacy_agent),
+            RebuttalAdapter(ai_engine, persona),
+            CoachingScoringAdapter(ai_engine),
+        ],
+        speech_to_text=SpeechToTextAdapter(speech_to_text_agent),
+    )
